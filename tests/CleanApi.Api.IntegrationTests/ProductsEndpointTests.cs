@@ -5,6 +5,7 @@ using System.Text.Json;
 using AwesomeAssertions;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 using Testcontainers.MsSql;
@@ -76,10 +77,17 @@ public sealed class ProductsEndpointTests : IAsyncLifetime
     {
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
+            // The container's SQL Server uses a self-signed certificate, so the client must trust it
+            // (Microsoft.Data.SqlClient encrypts by default). Without this the connection fails on Linux/CI.
+            var trustedConnectionString = new SqlConnectionStringBuilder(connectionString)
+            {
+                TrustServerCertificate = true,
+            }.ConnectionString;
+
             builder.UseEnvironment("Development");
             builder.ConfigureAppConfiguration((_, config) => config.AddInMemoryCollection(new Dictionary<string, string?>
             {
-                ["ConnectionStrings:Default"] = connectionString,
+                ["ConnectionStrings:Default"] = trustedConnectionString,
                 ["ConnectionStrings:Redis"] = "",
                 ["Database:ApplyMigrationsOnStartup"] = "true",
                 ["Database:RunSeedersOnStartup"] = "true",

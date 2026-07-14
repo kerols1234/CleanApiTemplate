@@ -19,7 +19,10 @@ namespace CleanApi.Api.IntegrationTests;
 /// <summary>
 /// Full DB-backed tests using a real SQL Server in a Testcontainers container. Automatically
 /// SKIPPED when Docker is unavailable, so the suite stays green in environments without Docker.
+/// Tagged <c>RequiresDocker</c> so CI (which runs on Linux where the SQL container's self-signed
+/// cert fails OpenSSL 3.x's TLS handshake) can exclude it; run it locally with Docker.
 /// </summary>
+[Trait("Category", "RequiresDocker")]
 public sealed class ProductsEndpointTests : IAsyncLifetime
 {
     private MsSqlContainer? _sqlContainer;

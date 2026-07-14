@@ -24,4 +24,6 @@ jobs:
         run: dotnet build --configuration Release --no-restore
 
       - name: Test
-        run: dotnet test --configuration Release --no-build --verbosity normal
+        # Excludes RequiresDocker tests (SQL Server via Testcontainers) — the container's self-signed
+        # certificate fails the TLS handshake under the runner's OpenSSL. Run those locally with Docker.
+        run: dotnet test --configuration Release --no-build --verbosity normal --filter "Category!=RequiresDocker"

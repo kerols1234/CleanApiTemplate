@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <!-- Repository/specification contracts + INotification for domain events -->
+    <PackageReference Include="Ardalis.Specification" />
+    <PackageReference Include="MediatR.Contracts" />
+  </ItemGroup>
+
+</Project>

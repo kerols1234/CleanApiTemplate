@@ -1,0 +1,33 @@
+<Project>
+
+  <!--
+    Shared build settings for every project in the solution.
+    Individual .csproj files only add what is unique to them.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+
+    <!-- Analyzers & code style. Default mode = high-value rules without the aggressive
+         perf/style noise of "Recommended"; a template should be clean, not preachy. -->
+    <EnableNETAnalyzers>true</EnableNETAnalyzers>
+    <AnalysisLevel>latest</AnalysisLevel>
+    <AnalysisMode>Default</AnalysisMode>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+
+    <!--
+      TreatWarningsAsErrors is intentionally OFF until the whole generated
+      solution is verified analyzer/nullable clean. Flip to true once green.
+    -->
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+
+    <!--
+      CS1591 = "missing XML doc comment for publicly visible type/member".
+      Suppressed globally so enabling docs generation later never breaks the build.
+    -->
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+  </PropertyGroup>
+
+</Project>

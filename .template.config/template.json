@@ -1,0 +1,60 @@
+{
+  "$schema": "http://json.schemastore.org/template",
+  "author": "Your Name",
+  "classifications": [ "Web", "API", "Clean Architecture", "CQRS", "DDD" ],
+  "identity": "CleanApi.CleanArchitecture.WebApi.CSharp",
+  "groupIdentity": "CleanApi.CleanArchitecture.WebApi",
+  "name": "Clean Architecture Web API (.NET 10, CQRS)",
+  "description": "A batteries-included ASP.NET Core 10 Web API: Clean Architecture + DDD, CQRS with MediatR + pipeline behaviors, EF Core (SQL Server) with views/procedures, repository + specification, Identity + JWT + permission authorization, Serilog, Sentry, OpenAPI/Scalar, Hangfire, rate limiting, HybridCache/Redis, FluentValidation, QuestPDF, ClosedXML, Firebase, Docker, and xUnit tests.",
+  "shortName": "cleanapi",
+  "sourceName": "CleanApi",
+  "defaultName": "CleanApi",
+  "preferNameDirectory": true,
+  "tags": {
+    "language": "C#",
+    "type": "solution"
+  },
+  "symbols": {
+    "userSecretsId": {
+      "type": "generated",
+      "generator": "guid",
+      "parameters": {
+        "defaultFormat": "D"
+      },
+      "replaces": "cleanapi-a1b2c3d4-e5f6-47a8-9b0c-1d2e3f4a5b6c"
+    }
+  },
+  "sources": [
+    {
+      "source": "./",
+      "target": "./",
+      "exclude": [
+        "**/bin/**",
+        "**/obj/**",
+        "**/.vs/**",
+        "**/.vscode/**",
+        "**/.idea/**",
+        "**/.git/**",
+        "**/*.user",
+        "**/TestResults/**",
+        "**/logs/**",
+        "artifacts/**",
+        ".template.config/**",
+        "TEMPLATE.md"
+      ]
+    }
+  ],
+  "primaryOutputs": [
+    { "path": "CleanApi.slnx" },
+    { "path": "src/CleanApi.Api/CleanApi.Api.csproj" }
+  ],
+  "postActions": [
+    {
+      "id": "restore",
+      "actionId": "210D431B-A78B-4D2F-B762-4ED3E3EA9025",
+      "continueOnError": true,
+      "description": "Restore NuGet packages",
+      "manualInstructions": [ { "text": "Run 'dotnet restore'" } ]
+    }
+  ]
+}

@@ -17,17 +17,20 @@
     <AnalysisMode>Default</AnalysisMode>
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
 
-    <!--
-      TreatWarningsAsErrors is intentionally OFF until the whole generated
-      solution is verified analyzer/nullable clean. Flip to true once green.
-    -->
-    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <!-- The generated solution is analyzer/nullable clean, so warnings are enforced as errors. -->
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
 
     <!--
       CS1591 = "missing XML doc comment for publicly visible type/member".
       Suppressed globally so enabling docs generation later never breaks the build.
     -->
     <NoWarn>$(NoWarn);CS1591</NoWarn>
+
+    <!--
+      Feature-toggle compile constants. `dotnet new` strips the #if blocks for any feature turned
+      off at generation time; these keep the source compiling with everything enabled.
+    -->
+    <DefineConstants>$(DefineConstants);UseFirebase;UseSentry;UseOpenTelemetry</DefineConstants>
   </PropertyGroup>
 
 </Project>

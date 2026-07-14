@@ -13,6 +13,7 @@ namespace CleanApi.Infrastructure.Identity;
 /// <summary>ASP.NET Core Identity + JWT implementation of <see cref="IIdentityService"/>.</summary>
 public sealed class IdentityService(
     UserManager<ApplicationUser> userManager,
+    SignInManager<ApplicationUser> signInManager,
     RoleManager<ApplicationRole> roleManager,
     IJwtTokenGenerator tokenGenerator,
     IDateTimeProvider dateTime,
@@ -42,7 +43,19 @@ public sealed class IdentityService(
     public async Task<Result<AuthenticationResult>> LoginAsync(string email, string password, CancellationToken cancellationToken)
     {
         var user = await userManager.FindByEmailAsync(email);
-        if (user is null || !await userManager.CheckPasswordAsync(user, password))
+        if (user is null)
+        {
+            return Result.Error<AuthenticationResult>("Invalid credentials.");
+        }
+
+        // lockoutOnFailure: true increments the failed-attempt counter and enforces lockout.
+        var signIn = await signInManager.CheckPasswordSignInAsync(user, password, lockoutOnFailure: true);
+        if (signIn.IsLockedOut)
+        {
+            return Result.Error<AuthenticationResult>("Account is locked due to repeated failed attempts. Try again later.");
+        }
+
+        if (!signIn.Succeeded)
         {
             return Result.Error<AuthenticationResult>("Invalid credentials.");
         }
@@ -56,15 +69,32 @@ public sealed class IdentityService(
             .Include(t => t.User)
             .FirstOrDefaultAsync(t => t.Token == refreshToken, cancellationToken);
 
-        if (stored is null || !stored.IsActive)
+        if (stored is null)
         {
-            return Result.Error<AuthenticationResult>("Invalid or expired refresh token.");
+            return Result.Error<AuthenticationResult>("Invalid refresh token.");
         }
 
-        // Rotate: revoke the presented token and issue a fresh pair.
-        stored.RevokedAt = dateTime.UtcNow;
+        // Reuse of an already-rotated/revoked token => likely theft. Revoke the whole session.
+        if (stored.RevokedAt is not null)
+        {
+            await dbContext.RefreshTokens
+                .Where(t => t.UserId == stored.UserId && t.RevokedAt == null)
+                .ExecuteUpdateAsync(s => s.SetProperty(t => t.RevokedAt, dateTime.UtcNow), cancellationToken);
 
+            return Result.Error<AuthenticationResult>("Refresh token reuse detected. All sessions have been revoked.");
+        }
+
+        if (dateTime.UtcNow >= stored.ExpiresAt)
+        {
+            return Result.Error<AuthenticationResult>("Refresh token has expired.");
+        }
+
+        // Rotate: revoke the presented token, issue a fresh pair, and link them.
+        stored.RevokedAt = dateTime.UtcNow;
         var result = await IssueTokensAsync(stored.User, cancellationToken);
+        stored.ReplacedByToken = result.RefreshToken;
+        await dbContext.SaveChangesAsync(cancellationToken);
+
         return Result.Success(result);
     }
 

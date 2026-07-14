@@ -29,4 +29,8 @@ ENV ASPNETCORE_HTTP_PORTS=8080
 EXPOSE 8080
 USER $APP_UID
 
+# Uses the app's own --healthcheck entrypoint (no curl/wget needed on the chiseled image).
+HEALTHCHECK --interval=30s --timeout=5s --start-period=25s --retries=3 \
+    CMD ["dotnet", "CleanApi.Api.dll", "--healthcheck"]
+
 ENTRYPOINT ["dotnet", "CleanApi.Api.dll"]

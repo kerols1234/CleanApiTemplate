@@ -20,8 +20,17 @@
     <PackageReference Include="Serilog.Sinks.Console" />
     <PackageReference Include="Serilog.Sinks.File" />
     <PackageReference Include="Serilog.Sinks.Seq" />
+    <!--#if (UseSentry) -->
     <PackageReference Include="Sentry.AspNetCore" />
     <PackageReference Include="Sentry.Serilog" />
+    <!--#endif -->
+    <!--#if (UseOpenTelemetry) -->
+    <PackageReference Include="OpenTelemetry.Extensions.Hosting" />
+    <PackageReference Include="OpenTelemetry.Instrumentation.AspNetCore" />
+    <PackageReference Include="OpenTelemetry.Instrumentation.Http" />
+    <PackageReference Include="OpenTelemetry.Instrumentation.Runtime" />
+    <PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" />
+    <!--#endif -->
   </ItemGroup>
 
   <ItemGroup Label="Jobs / health">

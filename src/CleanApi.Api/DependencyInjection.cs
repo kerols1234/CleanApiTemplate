@@ -5,6 +5,7 @@ using System.Threading.RateLimiting;
 using Asp.Versioning;
 using CleanApi.Api.Authorization;
 using CleanApi.Api.ExceptionHandlers;
+using CleanApi.Api.Filters;
 using CleanApi.Api.OpenApi;
 using CleanApi.Api.Services;
 using CleanApi.Application.Common.Interfaces;
@@ -25,6 +26,10 @@ public static class DependencyInjection
     {
         services.AddHttpContextAccessor();
         services.AddScoped<ICurrentUserService, CurrentUserService>();
+
+        // Idempotency store + filter (per-instance; back with a distributed cache for multi-instance).
+        services.AddMemoryCache();
+        services.AddScoped<IdempotencyFilter>();
 
         services.AddControllers();
 

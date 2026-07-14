@@ -1,5 +1,6 @@
 using CleanApi.Application.Common.Interfaces;
 using CleanApi.Application.Common.Models;
+using CleanApi.Application.Modules.Products.Queries;
 using CleanApi.Application.Modules.Products.Specifications;
 using CleanApi.Domain.Entities;
 using CleanApi.Domain.Repositories;
@@ -7,6 +8,7 @@ using CleanApi.Domain.ValueObjects;
 using FluentValidation;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Hybrid;
 
 namespace CleanApi.Application.Modules.Products.Commands;
 
@@ -38,6 +40,7 @@ public sealed class CreateProductCommandValidator : AbstractValidator<CreateProd
 public sealed class CreateProductCommandHandler(
     IApplicationDbContext context,
     IRepository<Product> repository,
+    HybridCache cache,
     ProductMapper mapper)
     : IRequestHandler<CreateProductCommand, Result<ProductDto>>
 {
@@ -64,6 +67,7 @@ public sealed class CreateProductCommandHandler(
         // Ardalis RepositoryBase.AddAsync persists and (via the SaveChanges interceptor) dispatches
         // the ProductCreatedEvent raised inside Product.Create.
         await repository.AddAsync(product, cancellationToken);
+        await cache.RemoveByTagAsync(ProductCacheTags.Products, cancellationToken);
 
         var created = await repository.FirstOrDefaultAsync(new ProductByIdSpec(product.Id), cancellationToken) ?? product;
 

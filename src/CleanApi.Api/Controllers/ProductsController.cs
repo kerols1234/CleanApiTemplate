@@ -1,6 +1,7 @@
 using Asp.Versioning;
 using CleanApi.Api.Authorization;
 using CleanApi.Api.Common;
+using CleanApi.Api.Filters;
 using CleanApi.Application.Modules.Products.Commands;
 using CleanApi.Application.Modules.Products.Queries;
 using CleanApi.Domain.Authorization;
@@ -40,6 +41,7 @@ public sealed class ProductsController : ApiControllerBase
 
     [HttpPost]
     [HasPermission(Permissions.Products.Create)]
+    [ServiceFilter(typeof(IdempotencyFilter))]
     [ProducesResponseType(StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]

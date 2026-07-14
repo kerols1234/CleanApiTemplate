@@ -4,6 +4,7 @@ using CleanApi.Infrastructure.Authentication;
 using CleanApi.Infrastructure.Identity;
 using CleanApi.Infrastructure.Jobs;
 using CleanApi.Infrastructure.Persistence;
+using CleanApi.Infrastructure.Persistence.Outbox;
 using CleanApi.Infrastructure.Persistence.Repositories;
 using CleanApi.Infrastructure.Persistence.Seed;
 using CleanApi.Infrastructure.Pdf;
@@ -62,9 +63,15 @@ public static class DependencyInjection
                 options.Password.RequiredLength = 8;
                 options.Password.RequireNonAlphanumeric = false;
                 options.User.RequireUniqueEmail = true;
+
+                // Account lockout after repeated failed logins.
+                options.Lockout.AllowedForNewUsers = true;
+                options.Lockout.MaxFailedAccessAttempts = 5;
+                options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
             })
             .AddRoles<ApplicationRole>()
-            .AddEntityFrameworkStores<AppDbContext>();
+            .AddEntityFrameworkStores<AppDbContext>()
+            .AddSignInManager();
 
         services.AddOptions<JwtSettings>()
             .Bind(configuration.GetSection(JwtSettings.SectionName))
@@ -118,10 +125,14 @@ public static class DependencyInjection
 
         services.AddHangfireServer();
         services.AddScoped<SampleRecurringJob>();
+        services.AddScoped<RefreshTokenCleanupJob>();
 
         // Channel-based in-process queue + its processor (the built-in alternative to Hangfire).
         services.AddSingleton<IBackgroundTaskQueue, BackgroundTaskQueue>();
         services.AddHostedService<QueuedHostedService>();
+
+        // Transactional outbox: publishes persisted domain events asynchronously.
+        services.AddHostedService<OutboxProcessor>();
     }
 
     private static void AddSettingsBoundServices(IServiceCollection services, IConfiguration configuration)
@@ -129,8 +140,10 @@ public static class DependencyInjection
         services.AddOptions<EmailSettings>().Bind(configuration.GetSection(EmailSettings.SectionName));
         services.AddSingleton(sp => sp.GetRequiredService<IOptions<EmailSettings>>().Value);
 
+#if (UseFirebase)
         services.AddOptions<FirebaseSettings>().Bind(configuration.GetSection(FirebaseSettings.SectionName));
         services.AddSingleton(sp => sp.GetRequiredService<IOptions<FirebaseSettings>>().Value);
+#endif
 
         services.AddOptions<SeedSettings>().Bind(configuration.GetSection(SeedSettings.SectionName));
         services.AddSingleton(sp => sp.GetRequiredService<IOptions<SeedSettings>>().Value);
@@ -138,6 +151,10 @@ public static class DependencyInjection
         services.AddScoped<IEmailService, EmailService>();
         services.AddSingleton<IExcelGenerator, ExcelGenerator>();
         services.AddSingleton<IPdfGenerator, QuestPdfGenerator>();
+#if (UseFirebase)
         services.AddSingleton<INotificationService, FirebaseNotificationService>();
+#else
+        services.AddSingleton<INotificationService, NoOpNotificationService>();
+#endif
     }
 }

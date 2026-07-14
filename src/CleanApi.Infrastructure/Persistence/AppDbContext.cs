@@ -1,9 +1,10 @@
+using System.Text.Json;
 using CleanApi.Application.Common.Interfaces;
 using CleanApi.Domain.Common;
 using CleanApi.Domain.Entities;
 using CleanApi.Infrastructure.Identity;
 using CleanApi.Infrastructure.Persistence.Extensions;
-using MediatR;
+using CleanApi.Infrastructure.Persistence.Outbox;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 
@@ -17,8 +18,7 @@ namespace CleanApi.Infrastructure.Persistence;
 public class AppDbContext(
     DbContextOptions<AppDbContext> options,
     ICurrentUserService currentUser,
-    IDateTimeProvider dateTime,
-    IPublisher publisher)
+    IDateTimeProvider dateTime)
     : IdentityDbContext<ApplicationUser, ApplicationRole, string>(options), IApplicationDbContext
 {
     public DbSet<Product> Products => Set<Product>();
@@ -26,6 +26,8 @@ public class AppDbContext(
     public DbSet<Category> Categories => Set<Category>();
 
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
+
+    public DbSet<OutboxMessage> OutboxMessages => Set<OutboxMessage>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -72,13 +74,11 @@ public class AppDbContext(
         ApplyAuditInformation();
         ConvertDeletesToSoftDeletes();
 
-        var domainEvents = CollectDomainEvents();
+        // Persist domain events to the outbox in the SAME transaction as the state change.
+        // They are published asynchronously by the OutboxProcessor (at-least-once delivery).
+        WriteDomainEventsToOutbox();
 
-        var result = await base.SaveChangesAsync(cancellationToken);
-
-        await DispatchDomainEventsAsync(domainEvents, cancellationToken);
-
-        return result;
+        return await base.SaveChangesAsync(cancellationToken);
     }
 
     private void ApplyAuditInformation()
@@ -115,23 +115,27 @@ public class AppDbContext(
         }
     }
 
-    private List<IDomainEvent> CollectDomainEvents()
+    private void WriteDomainEventsToOutbox()
     {
         var entitiesWithEvents = ChangeTracker.Entries<BaseEntity>()
             .Select(e => e.Entity)
             .Where(e => e.DomainEvents.Count != 0)
             .ToList();
 
-        var events = entitiesWithEvents.SelectMany(e => e.DomainEvents).ToList();
-        entitiesWithEvents.ForEach(e => e.ClearDomainEvents());
-        return events;
-    }
-
-    private async Task DispatchDomainEventsAsync(IReadOnlyList<IDomainEvent> domainEvents, CancellationToken cancellationToken)
-    {
-        foreach (var domainEvent in domainEvents)
+        foreach (var entity in entitiesWithEvents)
         {
-            await publisher.Publish(domainEvent, cancellationToken);
+            foreach (var domainEvent in entity.DomainEvents)
+            {
+                OutboxMessages.Add(new OutboxMessage
+                {
+                    Id = Guid.NewGuid(),
+                    Type = domainEvent.GetType().FullName!,
+                    Content = JsonSerializer.Serialize(domainEvent, domainEvent.GetType()),
+                    OccurredOnUtc = domainEvent.OccurredOn,
+                });
+            }
+
+            entity.ClearDomainEvents();
         }
     }
 }

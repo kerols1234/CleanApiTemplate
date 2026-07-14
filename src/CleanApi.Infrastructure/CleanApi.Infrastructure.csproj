@@ -31,7 +31,9 @@
     <PackageReference Include="MailKit" />
     <PackageReference Include="QuestPDF" />
     <PackageReference Include="ClosedXML" />
+    <!--#if (UseFirebase) -->
     <PackageReference Include="FirebaseAdmin" />
+    <!--#endif -->
   </ItemGroup>
 
   <ItemGroup Label="Options binding / hosting">

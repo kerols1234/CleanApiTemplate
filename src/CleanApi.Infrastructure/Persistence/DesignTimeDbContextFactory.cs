@@ -1,5 +1,4 @@
 using CleanApi.Application.Common.Interfaces;
-using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
 
@@ -22,7 +21,7 @@ public sealed class DesignTimeDbContextFactory : IDesignTimeDbContextFactory<App
             .UseSqlServer(connectionString, sql => sql.MigrationsAssembly(typeof(AppDbContext).Assembly.FullName))
             .Options;
 
-        return new AppDbContext(options, new DesignTimeCurrentUser(), new DesignTimeClock(), new DesignTimeNoOpPublisher());
+        return new AppDbContext(options, new DesignTimeCurrentUser(), new DesignTimeClock());
     }
 
     private sealed class DesignTimeCurrentUser : ICurrentUserService
@@ -38,13 +37,5 @@ public sealed class DesignTimeDbContextFactory : IDesignTimeDbContextFactory<App
     private sealed class DesignTimeClock : IDateTimeProvider
     {
         public DateTimeOffset UtcNow => DateTimeOffset.UtcNow;
-    }
-
-    private sealed class DesignTimeNoOpPublisher : IPublisher
-    {
-        public Task Publish(object notification, CancellationToken cancellationToken = default) => Task.CompletedTask;
-
-        public Task Publish<TNotification>(TNotification notification, CancellationToken cancellationToken = default)
-            where TNotification : INotification => Task.CompletedTask;
     }
 }

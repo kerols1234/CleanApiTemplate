@@ -1,12 +1,16 @@
 using CleanApi.Domain.Common;
-using CleanApi.Domain.Entities;
 
 namespace CleanApi.Domain.Events;
 
-/// <summary>Raised when a <see cref="Product"/> is created. Handled in the Application layer.</summary>
-public sealed class ProductCreatedEvent(Product product) : IDomainEvent
+/// <summary>
+/// Raised when a product is created. Carries only serializable primitive data (not the entity) so
+/// it can be persisted to the outbox and published reliably; consumers resolve the product by SKU.
+/// </summary>
+public sealed class ProductCreatedEvent(string sku, string name) : IDomainEvent
 {
-    public Product Product { get; } = product;
+    public string Sku { get; } = sku;
+
+    public string Name { get; } = name;
 
     public DateTimeOffset OccurredOn { get; } = DateTimeOffset.UtcNow;
 }

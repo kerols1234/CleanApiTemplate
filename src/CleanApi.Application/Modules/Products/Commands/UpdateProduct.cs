@@ -1,5 +1,6 @@
 using CleanApi.Application.Common.Interfaces;
 using CleanApi.Application.Common.Models;
+using CleanApi.Application.Modules.Products.Queries;
 using CleanApi.Application.Modules.Products.Specifications;
 using CleanApi.Domain.Entities;
 using CleanApi.Domain.Repositories;
@@ -7,6 +8,7 @@ using CleanApi.Domain.ValueObjects;
 using FluentValidation;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Hybrid;
 
 namespace CleanApi.Application.Modules.Products.Commands;
 
@@ -34,6 +36,7 @@ public sealed class UpdateProductCommandValidator : AbstractValidator<UpdateProd
 public sealed class UpdateProductCommandHandler(
     IApplicationDbContext context,
     IRepository<Product> repository,
+    HybridCache cache,
     ProductMapper mapper)
     : IRequestHandler<UpdateProductCommand, Result<ProductDto>>
 {
@@ -57,6 +60,7 @@ public sealed class UpdateProductCommandHandler(
             request.CategoryId);
 
         await repository.SaveChangesAsync(cancellationToken);
+        await cache.RemoveByTagAsync(ProductCacheTags.Products, cancellationToken);
 
         return Result.Success(mapper.ToDto(product), "Product updated successfully.");
     }

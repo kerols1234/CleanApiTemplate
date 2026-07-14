@@ -37,5 +37,27 @@ services:
       - "5341:5341"   # ingestion
       - "8081:80"     # Seq UI
 
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: cleanapi-app
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      ASPNETCORE_ENVIRONMENT: "Development"
+      ConnectionStrings__Default: "Server=sqlserver,1433;Database=CleanApi;User Id=sa;Password=Your_password123;TrustServerCertificate=True"
+      ConnectionStrings__Redis: "redis:6379"
+      ConnectionStrings__Hangfire: "Server=sqlserver,1433;Database=CleanApi;User Id=sa;Password=Your_password123;TrustServerCertificate=True"
+      Database__ApplyMigrationsOnStartup: "true"
+      Jwt__SigningKey: "dev-only-compose-signing-key-change-me-32chars-0123456789"
+      Serilog__WriteTo__2__Name: "Seq"
+      Serilog__WriteTo__2__Args__serverUrl: "http://seq:5341"
+    ports:
+      - "8080:8080"
+
 volumes:
   sqlserver-data:

@@ -22,6 +22,27 @@
         "defaultFormat": "D"
       },
       "replaces": "cleanapi-a1b2c3d4-e5f6-47a8-9b0c-1d2e3f4a5b6c"
+    },
+    "UseFirebase": {
+      "type": "parameter",
+      "dataType": "bool",
+      "defaultValue": "true",
+      "displayName": "Firebase push notifications",
+      "description": "Include the Firebase Cloud Messaging notification service."
+    },
+    "UseSentry": {
+      "type": "parameter",
+      "dataType": "bool",
+      "defaultValue": "true",
+      "displayName": "Sentry error tracking",
+      "description": "Include Sentry error/exception tracking."
+    },
+    "UseOpenTelemetry": {
+      "type": "parameter",
+      "dataType": "bool",
+      "defaultValue": "true",
+      "displayName": "OpenTelemetry",
+      "description": "Include OpenTelemetry tracing and metrics."
     }
   },
   "sources": [
@@ -40,7 +61,18 @@
         "**/logs/**",
         "artifacts/**",
         ".template.config/**",
-        "TEMPLATE.md"
+        "TEMPLATE.md",
+        ".github/workflows/template-validation.yml"
+      ],
+      "modifiers": [
+        {
+          "condition": "(!UseFirebase)",
+          "exclude": [ "src/CleanApi.Infrastructure/Services/FirebaseNotificationService.cs" ]
+        },
+        {
+          "condition": "(!UseOpenTelemetry)",
+          "exclude": [ "src/CleanApi.Api/Observability/ObservabilityExtensions.cs" ]
+        }
       ]
     }
   ],

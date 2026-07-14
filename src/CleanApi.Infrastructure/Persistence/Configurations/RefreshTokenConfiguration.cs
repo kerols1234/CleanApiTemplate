@@ -13,6 +13,7 @@ public sealed class RefreshTokenConfiguration : IEntityTypeConfiguration<Refresh
         builder.HasKey(t => t.Id);
 
         builder.Property(t => t.Token).HasMaxLength(200).IsRequired();
+        builder.Property(t => t.ReplacedByToken).HasMaxLength(200);
         builder.HasIndex(t => t.Token).IsUnique();
 
         builder.HasOne(t => t.User)

@@ -17,5 +17,9 @@ public class RefreshToken
 
     public DateTimeOffset? RevokedAt { get; set; }
 
+    /// <summary>The token this one was rotated into. Presenting a token that already has a
+    /// replacement is treated as reuse (token theft) and triggers revoking the whole session.</summary>
+    public string? ReplacedByToken { get; set; }
+
     public bool IsActive => RevokedAt is null && DateTimeOffset.UtcNow < ExpiresAt;
 }

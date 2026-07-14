@@ -53,7 +53,7 @@ public class Product : BaseEntity, IAuditableEntity, ISoftDeletable
             IsActive = true,
         };
 
-        product.RaiseDomainEvent(new ProductCreatedEvent(product));
+        product.RaiseDomainEvent(new ProductCreatedEvent(product.Sku, product.Name));
         return product;
     }
 

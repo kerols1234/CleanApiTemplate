@@ -1,0 +1,31 @@
+name: Template Validation
+
+# Validates the template itself: it must install, generate a project, and that project must build.
+# This workflow is EXCLUDED from generated projects (see .template.config/template.json).
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  generate-and-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Install template
+        run: dotnet new install .
+
+      - name: Generate a project
+        run: dotnet new cleanapi -n Sample.Api -o ../generated
+
+      - name: Build the generated project
+        working-directory: ../generated
+        run: dotnet build --configuration Release

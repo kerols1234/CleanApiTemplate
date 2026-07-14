@@ -8,6 +8,7 @@
   <Folder Name="/tests/">
     <Project Path="tests/CleanApi.Api.IntegrationTests/CleanApi.Api.IntegrationTests.csproj" />
     <Project Path="tests/CleanApi.Application.UnitTests/CleanApi.Application.UnitTests.csproj" />
+    <Project Path="tests/CleanApi.ArchitectureTests/CleanApi.ArchitectureTests.csproj" />
     <Project Path="tests/CleanApi.Domain.UnitTests/CleanApi.Domain.UnitTests.csproj" />
   </Folder>
 </Solution>

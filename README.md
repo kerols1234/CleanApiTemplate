@@ -4,25 +4,35 @@ A production-shaped **ASP.NET Core 10 Web API** built with Clean Architecture, D
 
 ## Highlights
 
-- **Clean Architecture + DDD** — `Domain` → `Application` → `Infrastructure` → `Api`, with dependency inversion.
+- **Clean Architecture + DDD** — `Domain` → `Application` → `Infrastructure` → `Api`, with dependency inversion (enforced by **architecture tests**).
 - **CQRS with MediatR** and pipeline behaviors: validation, logging, performance, unhandled-exception, and caching.
-- **EF Core 10 (SQL Server)** — entity configurations, **database views** (keyless), **stored procedures**, owned value objects, soft-delete, auditing, and domain-event dispatch on save.
+- **EF Core 10 (SQL Server)** — entity configurations, **database views** (keyless), **stored procedures**, owned value objects, soft-delete, auditing, and a **transactional outbox** for reliable domain-event delivery.
 - **Repository + Specification** (Ardalis.Specification) alongside a `IApplicationDbContext` unit of work.
-- **Identity + JWT** with **permission-based authorization** (roles carry permission claims; `[HasPermission(...)]` enforces them).
+- **Identity + JWT** with **permission-based authorization**, **account lockout**, and **refresh-token rotation with reuse detection**.
 - **Result pattern** → RFC 7807 ProblemDetails, centralized in one translator.
-- **Observability**: Serilog (console + file + Seq), Sentry, `IExceptionHandler` global error handling, health checks.
+- **Observability**: Serilog (console + file + Seq), **OpenTelemetry** (traces + metrics, OTLP), Sentry, `IExceptionHandler` global error handling, health checks.
 - **OpenAPI + Scalar** docs UI with JWT auth built in.
-- **Resilience & throughput**: rate limiting, HybridCache (in-memory + optional Redis L2), Hangfire jobs + a `Channel`-based background service.
+- **Security**: security-headers middleware, HSTS, CORS, rate limiting, **idempotency keys** for POSTs.
+- **Resilience & throughput**: HybridCache (in-memory + optional Redis L2) with write-through invalidation, Hangfire jobs + a `Channel`-based background service.
 - **Documents & messaging**: MailKit email, QuestPDF, ClosedXML (Excel), Firebase push notifications — all behind interfaces.
 - **FluentValidation**, dynamic paging/sorting, reusable `IQueryable`/`IEnumerable` extensions.
-- **Docker** (chiseled, non-root) + `docker-compose` (SQL Server + Redis + Seq), **xUnit** unit + integration tests (Testcontainers), `.editorconfig`, and Central Package Management.
+- **Docker** (chiseled, non-root, `HEALTHCHECK`) + `docker-compose` (app + SQL Server + Redis + Seq, `docker compose up` runs everything), **GitHub Actions CI**, **xUnit** unit + architecture + integration tests (Testcontainers), `.editorconfig` with warnings-as-errors, and Central Package Management.
+- **Feature toggles** at generation time (`--UseFirebase false`, `--UseSentry false`, `--UseOpenTelemetry false`).
 
 ## Quick start
 
-### 1. Start local infrastructure (SQL Server + Redis + Seq)
+### Option A — run everything in Docker
 
 ```bash
-docker compose up -d
+docker compose up --build
+```
+
+This starts SQL Server, Redis, Seq, **and the API** (which migrates + seeds on startup). The API is then on `http://localhost:8080`.
+
+### Option B — run the API locally against containerized infrastructure
+
+```bash
+docker compose up -d sqlserver redis seq
 ```
 
 > No Docker? Point `ConnectionStrings:Default` at any SQL Server (or SQL LocalDB) instead.

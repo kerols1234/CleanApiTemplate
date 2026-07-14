@@ -15,8 +15,8 @@ public sealed class ProductCreatedEventHandler(ILogger<ProductCreatedEventHandle
     {
         logger.LogInformation(
             "Product created: {Sku} ({Name})",
-            notification.Product.Sku,
-            notification.Product.Name);
+            notification.Sku,
+            notification.Name);
 
         return Task.CompletedTask;
     }

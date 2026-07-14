@@ -32,6 +32,24 @@ dotnet new cleanapi -n MyCompany.MyApi
 
 This creates a `MyCompany.MyApi/` folder with the full solution. The template engine renames the `CleanApi` source token everywhere — solution, projects, folders, namespaces, project references, and config — and generates a fresh `UserSecretsId` for the API project.
 
+### Feature toggles
+
+Optional subsystems can be excluded at generation time (all default to **on**):
+
+| Option | Default | Turns off |
+| --- | --- | --- |
+| `--UseFirebase` | `true` | Firebase push notifications (a no-op notifier is used instead) |
+| `--UseSentry` | `true` | Sentry error tracking |
+| `--UseOpenTelemetry` | `true` | OpenTelemetry tracing + metrics |
+
+Example — a lean build with none of those:
+
+```bash
+dotnet new cleanapi -n MyCompany.MyApi --UseFirebase false --UseSentry false --UseOpenTelemetry false
+```
+
+When a feature is turned off its code, package references, and DI wiring are removed from the generated project entirely. (Hangfire, Redis/HybridCache, and email are always included but stay dormant until configured — they are the `#if` pattern to copy if you want to make them toggleable too.)
+
 Then:
 
 ```bash

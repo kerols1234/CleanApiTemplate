@@ -3,10 +3,14 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
 using AwesomeAssertions;
+using CleanApi.Infrastructure.Persistence;
+using CleanApi.Infrastructure.Persistence.Seed;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Data.SqlClient;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Testcontainers.MsSql;
 
@@ -53,6 +57,20 @@ public sealed class ProductsEndpointTests : IAsyncLifetime
         }
 
         await using var factory = new DbBackedFactory(_sqlContainer!.GetConnectionString());
+
+        // Migrate + seed explicitly (rather than relying on the app's startup path, which
+        // WebApplicationFactory does not run deterministically).
+        await using (var scope = factory.Services.CreateAsyncScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            await context.Database.MigrateAsync();
+
+            foreach (var seeder in scope.ServiceProvider.GetServices<ISeeder>())
+            {
+                await seeder.SeedAsync(CancellationToken.None);
+            }
+        }
+
         var client = factory.CreateClient();
 
         // Seeded admin can log in.
@@ -77,20 +95,23 @@ public sealed class ProductsEndpointTests : IAsyncLifetime
     {
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
-            // The container's SQL Server uses a self-signed certificate, so the client must trust it
-            // (Microsoft.Data.SqlClient encrypts by default). Without this the connection fails on Linux/CI.
-            var trustedConnectionString = new SqlConnectionStringBuilder(connectionString)
+            // Disable encryption for the throwaway test container. Microsoft.Data.SqlClient encrypts
+            // by default, and the container's self-signed cert fails the TLS handshake under Ubuntu's
+            // OpenSSL 3.x on CI (TCP provider error 35). Plaintext is fine for an ephemeral test DB.
+            var testConnectionString = new SqlConnectionStringBuilder(connectionString)
             {
+                Encrypt = false,
                 TrustServerCertificate = true,
             }.ConnectionString;
 
             builder.UseEnvironment("Development");
             builder.ConfigureAppConfiguration((_, config) => config.AddInMemoryCollection(new Dictionary<string, string?>
             {
-                ["ConnectionStrings:Default"] = trustedConnectionString,
+                ["ConnectionStrings:Default"] = testConnectionString,
                 ["ConnectionStrings:Redis"] = "",
-                ["Database:ApplyMigrationsOnStartup"] = "true",
-                ["Database:RunSeedersOnStartup"] = "true",
+                // The test migrates + seeds explicitly, so leave startup init off.
+                ["Database:ApplyMigrationsOnStartup"] = "false",
+                ["Database:RunSeedersOnStartup"] = "false",
             }));
         }
     }

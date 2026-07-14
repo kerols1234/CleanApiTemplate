@@ -1,8 +1,13 @@
 # CleanApi — `dotnet new` template
 
+[![CI](https://github.com/kerols1234/CleanApiTemplate/actions/workflows/ci.yml/badge.svg)](https://github.com/kerols1234/CleanApiTemplate/actions/workflows/ci.yml)
+[![Template Validation](https://github.com/kerols1234/CleanApiTemplate/actions/workflows/template-validation.yml/badge.svg)](https://github.com/kerols1234/CleanApiTemplate/actions/workflows/template-validation.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-yellow.svg)](LICENSE)
+
 This repository is a **`dotnet new` custom template**. Installing it adds a `cleanapi` template you can use to scaffold new Clean-Architecture .NET 10 Web API solutions.
 
 > This file documents the template itself and is **excluded** from generated projects.
+> For what the generated project contains and how to run it, see [README.md](README.md) and the [docs/](docs/) guides.
 
 ## Install
 
@@ -71,6 +76,10 @@ See the generated project's `README.md` for everything else.
 
 - .NET SDK **10.0.300** or newer.
 - (Optional) Docker, for `docker compose` local infrastructure and the Testcontainers integration tests.
+
+## Licensing
+
+The template itself is [MIT](LICENSE). Generated projects ship with a copy of that `LICENSE` — replace it with your own project's license.
 
 ## Packaging as a NuGet template pack (optional)
 

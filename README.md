@@ -1,23 +1,120 @@
 # CleanApi
 
-A production-shaped **ASP.NET Core 10 Web API** built with Clean Architecture, Domain-Driven Design, and CQRS. Batteries included — every cross-cutting concern is wired up, guarded, and demonstrated with a working `Products` module.
+![.NET](https://img.shields.io/badge/.NET-10.0-512BD4)
+![C#](https://img.shields.io/badge/C%23-latest-239120)
+![Architecture](https://img.shields.io/badge/architecture-Clean%20%2B%20DDD-blue)
+![CQRS](https://img.shields.io/badge/pattern-CQRS-orange)
+![Tests](https://img.shields.io/badge/tests-xUnit-success)
+![License](https://img.shields.io/badge/license-MIT-yellow)
 
-## Highlights
+A production-shaped **ASP.NET Core 10 Web API** built with Clean Architecture, Domain-Driven Design, and CQRS. Every cross-cutting concern is wired up, guarded so the app boots with **zero external infrastructure**, and demonstrated end-to-end by a working `Products` module.
 
-- **Clean Architecture + DDD** — `Domain` → `Application` → `Infrastructure` → `Api`, with dependency inversion (enforced by **architecture tests**).
-- **CQRS with MediatR** and pipeline behaviors: validation, logging, performance, unhandled-exception, and caching.
-- **EF Core 10 (SQL Server)** — entity configurations, **database views** (keyless), **stored procedures**, owned value objects, soft-delete, auditing, and a **transactional outbox** for reliable domain-event delivery.
-- **Repository + Specification** (Ardalis.Specification) alongside a `IApplicationDbContext` unit of work.
-- **Identity + JWT** with **permission-based authorization**, **account lockout**, and **refresh-token rotation with reuse detection**.
-- **Result pattern** → RFC 7807 ProblemDetails, centralized in one translator.
-- **Observability**: Serilog (console + file + Seq), **OpenTelemetry** (traces + metrics, OTLP), Sentry, `IExceptionHandler` global error handling, health checks.
-- **OpenAPI + Scalar** docs UI with JWT auth built in.
-- **Security**: security-headers middleware, HSTS, CORS, rate limiting, **idempotency keys** for POSTs.
-- **Resilience & throughput**: HybridCache (in-memory + optional Redis L2) with write-through invalidation, Hangfire jobs + a `Channel`-based background service.
-- **Documents & messaging**: MailKit email, QuestPDF, ClosedXML (Excel), Firebase push notifications — all behind interfaces.
-- **FluentValidation**, dynamic paging/sorting, reusable `IQueryable`/`IEnumerable` extensions.
-- **Docker** (chiseled, non-root, `HEALTHCHECK`) + `docker-compose` (app + SQL Server + Redis + Seq, `docker compose up` runs everything), **GitHub Actions CI**, **xUnit** unit + architecture + integration tests (Testcontainers), `.editorconfig` with warnings-as-errors, and Central Package Management.
-- **Feature toggles** at generation time (`--UseFirebase false`, `--UseSentry false`, `--UseOpenTelemetry false`).
+---
+
+## Table of contents
+
+- [Features](#features)
+- [Architecture](#architecture)
+- [Request lifecycle](#request-lifecycle)
+- [Quick start](#quick-start)
+- [Project structure](#project-structure)
+- [The Products module](#the-products-module--the-pattern-to-copy)
+- [API endpoints](#api-endpoints)
+- [Documentation](#documentation)
+- [Configuration & secrets](#configuration--secrets)
+- [Testing](#testing)
+- [Docker](#docker)
+- [Library & licensing notes](#library--licensing-notes)
+- [License](#license)
+
+---
+
+## Features
+
+| Area | What you get |
+| --- | --- |
+| **Architecture** | Clean Architecture + DDD (entities, value objects, domain events), enforced by architecture tests |
+| **CQRS** | MediatR with validation, logging, performance, unhandled-exception, and caching pipeline behaviors |
+| **Data** | EF Core 10 / SQL Server, entity configs, **DB views** (keyless), **stored procedures**, owned value objects, soft-delete, auditing, execution-strategy transactions |
+| **Reliability** | **Transactional outbox** for at-least-once domain-event delivery |
+| **Persistence style** | Repository + Specification (Ardalis) *and* an `IApplicationDbContext` unit of work |
+| **AuthN / AuthZ** | ASP.NET Identity + JWT, **permission-based** policies, **account lockout**, **refresh-token rotation with reuse detection** |
+| **API surface** | Result pattern → RFC 7807 ProblemDetails, API versioning, paging/sorting, **idempotency keys** |
+| **Security** | Security-headers middleware, HSTS, CORS, rate limiting |
+| **Observability** | Serilog (console/file/Seq), **OpenTelemetry** (traces + metrics, OTLP), Sentry, health checks |
+| **Docs UI** | OpenAPI + Scalar with JWT auth built in |
+| **Caching / jobs** | HybridCache (memory + optional Redis L2) with write-through invalidation; Hangfire + a `Channel`-based background service |
+| **Documents / messaging** | MailKit email, QuestPDF, ClosedXML (Excel), Firebase push — all behind interfaces |
+| **Delivery** | Docker (chiseled, non-root, `HEALTHCHECK`) + `docker compose` (app + SQL + Redis + Seq), GitHub Actions CI |
+| **Quality** | xUnit unit + architecture + integration tests (Testcontainers), `.editorconfig`, warnings-as-errors, Central Package Management |
+
+> Optional subsystems (Firebase, Sentry, OpenTelemetry) can be excluded at generation time — see [TEMPLATE.md](TEMPLATE.md).
+
+## Architecture
+
+Dependencies point **inwards**. `Domain` is the core and depends on nothing; the outer layers depend on the inner ones. `Infrastructure` implements interfaces declared in `Application`/`Domain` (dependency inversion).
+
+```mermaid
+flowchart TD
+    subgraph API["🌐 API"]
+        direction LR
+        Controllers["Controllers · Middleware · Auth policies"]
+    end
+    subgraph Infrastructure["🔌 Infrastructure"]
+        direction LR
+        Impl["EF Core · Identity/JWT · Email/PDF/Excel · Jobs · Outbox"]
+    end
+    subgraph Application["⚙️ Application"]
+        direction LR
+        UseCases["CQRS handlers · Behaviors · Interfaces · Result"]
+    end
+    subgraph Domain["💎 Domain"]
+        direction LR
+        Core["Entities · Value objects · Domain events · Contracts"]
+    end
+
+    API --> Application
+    API --> Infrastructure
+    Infrastructure --> Application
+    Application --> Domain
+```
+
+| Layer | Responsibility | Depends on |
+| --- | --- | --- |
+| `CleanApi.Domain` | Entities, value objects, domain events, repository & auth contracts | — |
+| `CleanApi.Application` | CQRS modules, pipeline behaviors, `Result`, paging, service interfaces | Domain |
+| `CleanApi.Infrastructure` | EF Core, migrations, Identity/JWT, email/PDF/Excel/Firebase, jobs, outbox, seeders | Application |
+| `CleanApi.Api` | Program, controllers, DI, exception handlers, authorization, OpenAPI | Application, Infrastructure |
+
+These rules are **verified at build time** by `CleanApi.ArchitectureTests`, so the layering cannot silently rot. See [docs/architecture.md](docs/architecture.md) for the full deep dive.
+
+## Request lifecycle
+
+A write request flows through the MediatR pipeline; domain events are persisted to the outbox in the same transaction and published asynchronously.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant C as Client
+    participant Ctrl as Controller
+    participant P as MediatR pipeline
+    participant H as Handler
+    participant DB as DbContext (+ Outbox)
+    participant O as OutboxProcessor
+    participant EH as Event handlers
+
+    C->>Ctrl: POST /api/v1/products (JWT)
+    Ctrl->>P: Send(CreateProductCommand)
+    P->>P: Validation · Logging · Performance behaviors
+    P->>H: Handle(command)
+    H->>DB: repository.AddAsync + SaveChanges
+    Note over DB: entity + OutboxMessage committed atomically
+    H->>H: HybridCache.RemoveByTag("products")
+    H-->>Ctrl: Result<ProductDto>
+    Ctrl-->>C: 201 Created { data, message }
+    O-->>DB: poll unprocessed messages
+    O->>EH: publish ProductCreatedEvent
+```
 
 ## Quick start
 
@@ -27,97 +124,104 @@ A production-shaped **ASP.NET Core 10 Web API** built with Clean Architecture, D
 docker compose up --build
 ```
 
-This starts SQL Server, Redis, Seq, **and the API** (which migrates + seeds on startup). The API is then on `http://localhost:8080`.
+Starts SQL Server, Redis, Seq, **and the API** (which migrates + seeds on startup). API on `http://localhost:8080`.
 
 ### Option B — run the API locally against containerized infrastructure
 
 ```bash
 docker compose up -d sqlserver redis seq
-```
-
-> No Docker? Point `ConnectionStrings:Default` at any SQL Server (or SQL LocalDB) instead.
-
-### 2. Apply migrations and run
-
-```bash
 dotnet ef database update -p src/CleanApi.Infrastructure -s src/CleanApi.Api
 dotnet run --project src/CleanApi.Api
 ```
 
-In **Development**, migrations are applied and data is seeded automatically on startup, so `dotnet run` alone is usually enough.
+> No Docker? Point `ConnectionStrings:Default` at any SQL Server (or SQL LocalDB). In **Development**, migrations + seeding run automatically on startup.
 
 Then open:
 
-- **API docs (Scalar):** `http://localhost:5083/scalar`
-- **Health:** `http://localhost:5083/health`
-- **Hangfire dashboard:** `http://localhost:5083/hangfire`
-- **Seq logs (if using compose):** `http://localhost:8081`
-
-### 3. Log in
-
-A seeded administrator is created on first run:
-
-| Email | Password |
+| Endpoint | URL (local) |
 | --- | --- |
-| `admin@example.com` | `Admin123!$` |
+| 📖 API docs (Scalar) | `http://localhost:5083/scalar` |
+| ❤️ Health | `http://localhost:5083/health` |
+| ⏱️ Hangfire dashboard | `http://localhost:5083/hangfire` |
+| 📊 Seq logs (compose) | `http://localhost:8081` |
 
-`POST /api/v1/auth/login` returns an access + refresh token. Send `Authorization: Bearer <token>` on subsequent calls (or click **Authorize** in Scalar).
+**Seeded administrator** (first run): `admin@example.com` / `Admin123!$`. Call `POST /api/v1/auth/login`, then send `Authorization: Bearer <token>` (or click **Authorize** in Scalar).
 
-## Project layout
+## Project structure
 
 ```
 src/
   CleanApi.Domain          Entities, value objects, domain events, repository & auth contracts
-  CleanApi.Application      CQRS modules, pipeline behaviors, Result, paging, service interfaces
-  CleanApi.Infrastructure  EF Core, migrations, repositories, Identity/JWT, email/pdf/excel/firebase, jobs, seeders
+  CleanApi.Application     CQRS modules, pipeline behaviors, Result, paging, service interfaces
+  CleanApi.Infrastructure  EF Core, migrations, Identity/JWT, email/pdf/excel/firebase, jobs, outbox, seeders
   CleanApi.Api             Program, controllers, DI, exception handlers, authorization, OpenAPI
 tests/
   CleanApi.Domain.UnitTests
   CleanApi.Application.UnitTests
+  CleanApi.ArchitectureTests      layering rules (NetArchTest)
   CleanApi.Api.IntegrationTests   WebApplicationFactory + Testcontainers
 ```
 
 ## The `Products` module — the pattern to copy
 
-Everything you need to add a feature is demonstrated under `src/CleanApi.Application/Modules/Products`:
+Everything needed to add a feature is demonstrated under `src/CleanApi.Application/Modules/Products`:
 
 - **Commands**: create, update, delete (soft), adjust-stock (transaction example).
 - **Queries**: get-by-id, paged + cacheable list, category **summary (DB view)**, low-stock (**stored procedure**), Excel export, PDF export.
 - One file per feature holds the request record, its FluentValidation validator, and its handler.
-- Mapping is source-generated with **Mapperly** (`ProductMapper`).
+- Mapping is source-generated with **Mapperly**.
 
-Controllers in `src/CleanApi.Api/Controllers/ProductsController.cs` gate each action with `[HasPermission(Permissions.Products.*)]` and return `result.ToActionResult()`.
+Step-by-step guide: [docs/adding-a-feature.md](docs/adding-a-feature.md).
+
+## API endpoints
+
+| Method | Route | Auth | Notes |
+| --- | --- | --- | --- |
+| `POST` | `/api/v1/auth/register` | anonymous | rate-limited |
+| `POST` | `/api/v1/auth/login` | anonymous | returns access + refresh tokens; lockout after 5 fails |
+| `POST` | `/api/v1/auth/refresh` | anonymous | rotates tokens; reuse detection |
+| `GET` | `/api/v1/products` | `Products.Read` | paged, filterable, cached |
+| `GET` | `/api/v1/products/{id}` | `Products.Read` | |
+| `GET` | `/api/v1/products/summary` | `Products.Read` | reads a **DB view** |
+| `GET` | `/api/v1/products/low-stock` | `Products.Read` | calls a **stored procedure** |
+| `POST` | `/api/v1/products` | `Products.Create` | supports `Idempotency-Key` |
+| `PUT` | `/api/v1/products/{id}` | `Products.Update` | |
+| `POST` | `/api/v1/products/{id}/stock-adjustments` | `Products.Update` | transactional |
+| `DELETE` | `/api/v1/products/{id}` | `Products.Delete` | soft delete |
+| `GET` | `/api/v1/products/export/excel` | `Products.Export` | ClosedXML |
+| `GET` | `/api/v1/products/export/pdf` | `Products.Export` | QuestPDF |
+| `POST` | `/api/v1/admin/notifications/push` | `Admin.SendNotifications` | Firebase (no-op if unconfigured) |
+| `POST` | `/api/v1/admin/jobs/*` | `Admin.ManageUsers` | Hangfire + in-process queue demos |
+
+## Documentation
+
+| Guide | Contents |
+| --- | --- |
+| [docs/architecture.md](docs/architecture.md) | Layers, dependency rules, CQRS pipeline, Result pattern, outbox, domain events |
+| [docs/adding-a-feature.md](docs/adding-a-feature.md) | Add a new command/query/module step by step |
+| [docs/configuration.md](docs/configuration.md) | Every config key, environment variables, secrets, profiles |
+| [docs/security.md](docs/security.md) | Auth flow, permissions, refresh rotation, lockout, headers, idempotency |
+| [TEMPLATE.md](TEMPLATE.md) | Using the `dotnet new` template + feature toggles |
 
 ## Configuration & secrets
 
-Config is layered: `appsettings.json` → `appsettings.{Environment}.json` → environment variables / user-secrets.
-
-**External integrations are off by default and only activate when configured:**
+External integrations are **off by default** and only activate when configured:
 
 | Integration | Enabled when… | Otherwise |
 | --- | --- | --- |
-| Redis (HybridCache L2) | `ConnectionStrings:Redis` is set | In-memory L1 cache only |
-| Hangfire SQL storage | `Hangfire:UseSqlServerStorage` is `true` | In-memory storage |
-| Sentry | `Sentry:Dsn` is set | Disabled |
-| Firebase push | `Firebase:ServiceAccountPath` points to a service-account file | No-op |
+| Redis (HybridCache L2) | `ConnectionStrings:Redis` set | in-memory L1 only |
+| Hangfire SQL storage | `Hangfire:UseSqlServerStorage` = `true` | in-memory storage |
+| Sentry | `Sentry:Dsn` set | disabled |
+| OpenTelemetry export | `OpenTelemetry:OtlpEndpoint` set | traced in-process, not exported |
+| Firebase push | `Firebase:ServiceAccountPath` set | no-op |
 
-**Secrets — never commit these.** In Development, a throwaway `Jwt:SigningKey` lives in `appsettings.Development.json` so the app runs immediately. For any real environment, provide secrets via user-secrets or environment variables:
+**Never commit secrets.** A throwaway `Jwt:SigningKey` lives in `appsettings.Development.json` so a fresh clone runs immediately; for any real environment supply it via user-secrets or environment variables:
 
 ```bash
 dotnet user-secrets set "Jwt:SigningKey" "<a strong 32+ char key>" --project src/CleanApi.Api
 ```
 
-Production requires `Jwt:SigningKey`, `ConnectionStrings:Default`, and any integration secrets to be supplied externally (see `appsettings.Production.json`). The Firebase service-account JSON is `.gitignore`d.
-
-## Library & licensing notes
-
-This template deliberately favors permissively-licensed libraries. Be aware of the following:
-
-- **MediatR is pinned to `12.5.0`** — the last Apache-2.0 release. MediatR 13+ is commercial; do not bump without a license review.
-- **QuestPDF** runs under its free **Community** license (set in `Program.cs`). Commercial use above the revenue threshold requires a paid license.
-- **ClosedXML (MIT)** is used for Excel instead of EPPlus (EPPlus 5+ requires a commercial license for commercial use).
-- Tests use **NSubstitute** and **AwesomeAssertions** (both free) rather than Moq / FluentAssertions v8.
-- Mapping uses **Mapperly** (source generator) rather than AutoMapper (also commercial since 2025).
+Full reference: [docs/configuration.md](docs/configuration.md).
 
 ## Testing
 
@@ -125,21 +229,26 @@ This template deliberately favors permissively-licensed libraries. Be aware of t
 dotnet test
 ```
 
-Unit tests run everywhere. The integration tests spin up a real SQL Server via **Testcontainers**; if Docker isn't available they skip themselves so the suite stays green.
+Unit and architecture tests run everywhere. Integration tests spin up a real SQL Server via **Testcontainers**; if Docker isn't available they skip themselves so the suite stays green.
 
 ## Docker
 
 ```bash
 docker build -t cleanapi .
-docker run -p 8080:8080 -e ConnectionStrings__Default="<your connection string>" cleanapi
+docker run -p 8080:8080 -e ConnectionStrings__Default="<connection string>" cleanapi
 ```
 
-The runtime image is the chiseled (distroless) ASP.NET base and runs as a non-root user.
+Runtime image is the chiseled (distroless) ASP.NET base, runs as a non-root user, and ships a `HEALTHCHECK`.
 
-## Adding a migration
+## Library & licensing notes
 
-```bash
-dotnet ef migrations add <Name> -p src/CleanApi.Infrastructure -s src/CleanApi.Api -o Persistence/Migrations
-```
+This template favors permissively-licensed libraries:
 
-To add a **view** or **stored procedure**, define its keyless result type in `Domain` (with `[DbView("...")]` for views), then create the SQL in a migration using the `CreateOrAlterView` / `CreateOrAlterStoredProcedure` helpers — the mapping is wired automatically by reflection.
+- **MediatR is pinned to `12.5.0`** — the last Apache-2.0 release (13+ is commercial). Do not bump without a license review.
+- **QuestPDF** runs under its free **Community** license (set in `Program.cs`).
+- **ClosedXML (MIT)** is used for Excel instead of EPPlus (commercial for commercial use).
+- Tests use **NSubstitute** and **AwesomeAssertions**; mapping uses **Mapperly** — all free.
+
+## License
+
+This project's source is provided under the [MIT License](LICENSE). Third-party libraries retain their own licenses (see the note above).

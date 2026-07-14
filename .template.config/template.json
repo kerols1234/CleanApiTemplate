@@ -1,6 +1,6 @@
 {
   "$schema": "http://json.schemastore.org/template",
-  "author": "Your Name",
+  "author": "kerols1234",
   "classifications": [ "Web", "API", "Clean Architecture", "CQRS", "DDD" ],
   "identity": "CleanApi.CleanArchitecture.WebApi.CSharp",
   "groupIdentity": "CleanApi.CleanArchitecture.WebApi",
